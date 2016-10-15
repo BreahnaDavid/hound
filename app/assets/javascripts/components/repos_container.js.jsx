@@ -13,8 +13,7 @@ class ReposContainer extends React.Component {
         this.setState({isSyncing: false});
       },
       error: (error) => {
-        console.log("Error:");
-        console.log(error);
+        alert("Your repos failed to load.");
       }
     });
   }
@@ -39,12 +38,16 @@ class ReposContainer extends React.Component {
 
   onRepoClicked = (id) => {
     this.setState({isProcessingId: id});
+    let repo = _.find(this.state.repos, {id: id});
 
     $.ajax({
       url: `/repos/${id}/activation.json`,
       type: "POST",
+      success: () => {
+
+      },
       error: () => {
-        alert("Could not activate repo!");
+        alert("Your repo failed to activate.");
       }
     });
 
@@ -71,10 +74,15 @@ class ReposContainer extends React.Component {
 
     $.ajax({
       url: "/repo_syncs.json",
-      type: "POST"
+      type: "POST",
+      success: () => {
+        this.handleSync();
+      },
+      error: () => {
+        this.setState({isSyncing: false});
+        alert("Your repos failed to sync.");
+      }
     });
-
-    this.handleSync();
   }
 
   onPrivateClicked = (evt) => {
@@ -83,6 +91,23 @@ class ReposContainer extends React.Component {
 
   onSearchInput = (term) => {
     this.setState({filterTerm: term});
+  }
+
+  track_repo_activated = (repo) => {
+    if (repo.private) {
+      const eventName = "Private Repo Activated";
+      const price = repo.price_in_dollars;
+    } else {
+      const eventName = "Public Repo Activated";
+      const price = 0.0;
+    }
+
+    window.analytics.track(eventName, {
+      properties: {
+        name: repo.full_github_name,
+        revenue: price
+      }
+    });
   }
 
   render = () => {
@@ -99,8 +124,10 @@ class ReposContainer extends React.Component {
         />
         {
           this.state.isSyncing
-          ? <ReposSyncSpinner/>
-          : <OrganizationsList
+          ?
+            <ReposSyncSpinner/>
+          :
+            <OrganizationsList
               organizations={this.state.organizations}
               repos={this.state.repos}
               filterTerm={this.state.filterTerm}

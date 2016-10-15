@@ -1,10 +1,12 @@
 class Organization extends React.Component {
   filterBySearchTerm = (repo) => {
-    if ( this.props.filterTerm === null) {
+    const { filterTerm } = this.props;
+    if (filterTerm == null) {
       return true;
-    } else {
-      return (repo.name.indexOf(this.props.filterTerm) !== -1);
     }
+
+    const repoName = repo.full_github_name.toLowerCase();
+    return repoName.indexOf(filterTerm.toLowerCase()) !== -1;
   }
 
   render = () => {
@@ -19,7 +21,7 @@ class Organization extends React.Component {
           <ul className="repos">
             {repos && repos.filter(this.filterBySearchTerm).map( (repo) => (
               <Repo
-                data={repo}
+                repo={repo}
                 key={repo.id}
                 onRepoClicked={onRepoClicked}
                 isProcessingId={isProcessingId}
