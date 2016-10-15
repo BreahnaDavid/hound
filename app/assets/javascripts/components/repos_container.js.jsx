@@ -1,37 +1,20 @@
 class ReposContainer extends React.Component {
   fetchReposAndOrgs = () => {
-    this.setState({isSyncing: true});
-    fetch("repos.json", {
-      credentials: "same-origin",
-      headers: {
-        "X-XSRF-Token": this.props.authenticity_token
-      }
-    })
-    .then( (response) => {
-      if (response.ok) {
-        response.json().then( (data) => {
-          this.setState({repos: data});
+    $.ajax({
+      url: "/repos.json",
+      type: "GET",
+      dataType: "json",
+      success: (data) => {
+        this.setState({repos: data});
 
-          organizations = data.map( (repo) => { return repo.owner; });
-          this.setState({organizations: _.uniqWith(organizations, _.isEqual)});
+        organizations = data.map( (repo) => { return repo.owner; });
+        this.setState({organizations: _.uniqWith(organizations, _.isEqual)});
 
-          this.setState({isSyncing: false});
-        });
-      } else {
-        //
-      }
-    })
-    .catch( (error) => {
-      //
-    });
-  }
-
-  syncReposAndOrgs = () => {
-    return fetch("repo_syncs.json", {
-      credentials: "same-origin",
-      method: "post",
-      headers: {
-        "X-XSRF-Token": this.props.authenticity_token
+        this.setState({isSyncing: false});
+      },
+      error: (error) => {
+        console.log("Error:");
+        console.log(error);
       }
     });
   }
@@ -45,67 +28,57 @@ class ReposContainer extends React.Component {
   }
 
   componentWillMount = () => {
-    this.fetchReposAndOrgs();
-  }
-
-  activateRepo = (id) => {
-    return fetch(`repos/${id}/activation.json`, {
-        credentials: "same-origin",
-        method: "post",
-        headers: {
-          "X-XSRF-Token": this.props.authenticity_token
-        }
+    $.ajaxSetup({
+      headers: {
+        "X-XSRF-Token": this.props.authenticity_token
       }
-    );
+    });
+    this.setState({isSyncing: true});
+    this.fetchReposAndOrgs();
   }
 
   onRepoClicked = (id) => {
     this.setState({isProcessingId: id});
 
-    this.activateRepo(id).then(
-      (resp) => {
-        if (resp.ok) {
-          console.log(resp);
-        } else {
-          console.log("error");
-          console.log(resp);
-        }
-      }
-    ).then(
-      () => {
-        this.setState({isProcessingId: null});
-      }
-    )
-  }
-
-  getUserSyncingStatus = () => {
-    fetch("/user.json", {
-      credentials: "same-origin",
-      headers: {
-        "X-XSRF-Token": this.props.authenticity_token
+    $.ajax({
+      url: `/repos/${id}/activation.json`,
+      type: "POST",
+      error: () => {
+        alert("Could not activate repo!");
       }
     });
+
+    this.setState({isProcessingId: null});
   }
 
-  waitForUserSyncDone = () => {
-
+  handleSync = () => {
+    $.ajax({
+      url: "/user.json",
+      type: "GET",
+      dataType: "json",
+      success: (data) => {
+        if (data.refreshing_repos) {
+          setTimeout(() => { this.handleSync() }, 2000);
+        } else {
+          this.fetchReposAndOrgs();
+        }
+      }
+    });
   }
 
   onRefreshClicked = (evt) => {
     this.setState({isSyncing: true});
-    this.syncReposAndOrgs().then( (resp) => {
-      if (resp.ok) {
-        console.log("sync start OK!");
-        waitForUserSyncDone();
-      } else {
-        console.log("sync start NOK!");
-        console.log(resp);
-      }
+
+    $.ajax({
+      url: "/repo_syncs.json",
+      type: "POST"
     });
+
+    this.handleSync();
   }
 
   onPrivateClicked = (evt) => {
-    fetch("/auth/github?access=full", {method: "post"})
+    $.post("/auth/github?access=full");
   }
 
   onSearchInput = (term) => {
@@ -113,9 +86,9 @@ class ReposContainer extends React.Component {
   }
 
   render = () => {
-    return (
-      const { has_private_access } = this.props;
+    const { has_private_access } = this.props;
 
+    return (
       <div>
         <RepoTools
           showPrivateButton={!has_private_access}
@@ -127,15 +100,14 @@ class ReposContainer extends React.Component {
         {
           this.state.isSyncing
           ? <ReposSyncSpinner/>
-          : null
+          : <OrganizationsList
+              organizations={this.state.organizations}
+              repos={this.state.repos}
+              filterTerm={this.state.filterTerm}
+              onRepoClicked={this.onRepoClicked}
+              isProcessingId={this.state.isProcessingId}
+            />
         }
-        <OrganizationsList
-          organizations={this.state.organizations}
-          repos={this.state.repos}
-          filterTerm={this.state.filterTerm}
-          onRepoClicked={this.onRepoClicked}
-          isProcessingId={this.state.isProcessingId}
-        />
       </div>
     );
   }
