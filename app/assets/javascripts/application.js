@@ -1,5 +1,5 @@
 //= require lodash
-//= require jquery
+//= require jquery3
 //= require namespaced
 //= require_self
 //= require react

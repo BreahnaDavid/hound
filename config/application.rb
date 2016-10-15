@@ -21,5 +21,6 @@ module Houndapp
     config.react.jsx_transform_options = {
       optional: ['es7.classProperties']
     }
+    config.react.addons = true
   end
 end
